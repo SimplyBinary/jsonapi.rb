@@ -56,9 +56,12 @@ module JSONAPI
 
         details = resource.messages
         details = resource.details if resource.respond_to?(:details)
-
         details.each do |error_key, error_hashes|
-          error_hashes.each do |error_hash|
+          error_hashes.each_with_index do |error_hash, index|
+            # Support for errors.add(:attr, 'message')
+            if error_hash[:error].is_a?(String)
+              error_hash = { message: resource.messages[error_key][index] }
+            end
             # Rails 4 provides just the message.
             error_hash = { message: error_hash } unless error_hash.is_a?(Hash)
 

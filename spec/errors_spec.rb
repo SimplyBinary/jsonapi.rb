@@ -60,6 +60,28 @@ RSpec.describe NotesController, type: :request do
           .to eq('User can\'t be blank')
       end
 
+      context 'with custom validations on base' do
+        let(:params) do
+          payload = note_params.dup
+          payload[:data][:attributes][:title] = 'INVALID'
+          payload[:data][:attributes][:quantity] = 99
+          payload
+        end
+
+        it do
+          expect(response).to have_http_status(:unprocessable_entity)
+          expect(response_json['errors'].size).to eq(1)
+          expect(response_json['errors'][0]['status']).to eq('422')
+          expect(response_json['errors'][0]['code']).to include('note_fails_compound_validation')
+          expect(response_json['errors'][0]['title'])
+            .to eq(Rack::Utils::HTTP_STATUS_CODES[422])
+          expect(response_json['errors'][0]['source'])
+              .to eq('pointer' => '')
+          expect(response_json['errors'][0]['detail'])
+            .to eq('Note fails compound validation')
+        end
+      end
+
       context 'required by validations' do
         let(:params) do
           payload = note_params.dup

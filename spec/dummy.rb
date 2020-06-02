@@ -37,6 +37,16 @@ class Note < ActiveRecord::Base
   validates_format_of :title, without: /BAD_TITLE/
   validates_numericality_of :quantity, less_than: 100, if: :quantity?
   belongs_to :user, required: true
+
+  validate :compound_validation
+
+  private
+
+  def compound_validation
+    if title == 'INVALID' and quantity == 99
+      errors.add(:base, "Note fails compound validation")
+    end
+  end
 end
 
 class CustomNoteSerializer
