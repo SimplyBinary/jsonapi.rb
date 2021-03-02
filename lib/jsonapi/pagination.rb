@@ -43,6 +43,8 @@ module JSONAPI
       original_url = request.base_url + request.path + '?'
 
       pagination.each do |page_name, number|
+        next if page_name == :records
+
         original_params[:page][:number] = number
         links[page_name] = original_url + CGI.unescape(
           original_params.to_query
@@ -63,7 +65,7 @@ module JSONAPI
       numbers = { current: page }
 
       if resources.respond_to?(:unscope)
-        total = resources.unscope(:limit, :offset, :order).count()
+        total = resources.unscope(:limit, :offset, :order).size
       else
         # Try to fetch the cached size first
         total = resources.instance_variable_get(:@original_size)
@@ -82,6 +84,10 @@ module JSONAPI
         numbers[:last] = last_page
       end
 
+      if total.present?
+        numbers[:records] = total
+      end
+
       numbers
     end
 
@@ -89,14 +95,28 @@ module JSONAPI
     #
     # @return [Array] with the offset, limit and the current page number
     def jsonapi_pagination_params
-      def_per_page = self.class.const_get(:JSONAPI_PAGE_SIZE).to_i
-
       pagination = params[:page].try(:slice, :number, :size) || {}
-      per_page = pagination[:size].to_f.to_i
-      per_page = def_per_page if per_page > def_per_page || per_page < 1
+      per_page = jsonapi_page_size(pagination)
       num = [1, pagination[:number].to_f.to_i].max
 
       [(num - 1) * per_page, per_page, num]
+    end
+
+    # Retrieves the default page size
+    #
+    # @param per_page_param [Hash] opts the paginations params
+    # @option opts [String] :number the page number requested
+    # @option opts [String] :size the page size requested
+    #
+    # @return [Integer]
+    def jsonapi_page_size(pagination_params)
+      per_page = pagination_params[:size].to_f.to_i
+
+      return self.class
+              .const_get(:JSONAPI_PAGE_SIZE)
+              .to_i if per_page < 1
+
+      per_page
     end
 
     # Fallback to Rack's parsed query string when Rails is not available
