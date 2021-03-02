@@ -1,11 +1,10 @@
-require 'fast_jsonapi'
+require 'jsonapi/serializer'
 
 module JSONAPI
   # A simple error serializer
   class ErrorSerializer
-    include FastJsonapi::ObjectSerializer
+    include JSONAPI::Serializer
 
-    set_id :object_id
     set_type :error
 
     # Object/Hash attribute helpers.
@@ -13,6 +12,12 @@ module JSONAPI
       attribute attr_name do |object|
         object.try(attr_name) || object.try(:fetch, attr_name, nil)
       end
+    end
+
+    # Overwrite the ID extraction method, to skip validations
+    #
+    # @return [NilClass]
+    def self.id_from_record(_record, _params)
     end
 
     # Remap the root key to `errors`

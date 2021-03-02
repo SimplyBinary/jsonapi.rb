@@ -42,8 +42,9 @@ module JSONAPI
         many = JSONAPI::Rails.is_collection?(resource, options[:is_collection])
         resource = [resource] unless many
 
-        return JSONAPI::ErrorSerializer.new(resource, options)
-          .serialized_json unless resource.is_a?(ActiveModel::Errors)
+        return JSONAPI::Rails.serializer_to_json(
+          JSONAPI::ErrorSerializer.new(resource, options)
+        ) unless resource.is_a?(ActiveModel::Errors)
 
         errors = []
         model = resource.instance_variable_get('@base')
@@ -54,8 +55,19 @@ module JSONAPI
           model_serializer = JSONAPI::Rails.serializer_class(model, false)
         end
 
-        details = resource.messages
-        details = resource.details if resource.respond_to?(:details)
+        details = {}
+        if ::Rails::VERSION::MAJOR >= 6 && ::Rails::VERSION::MINOR >= 1
+          resource.map do |error|
+            attr = error.attribute
+            details[attr] ||= []
+            details[attr] << error.detail.merge(message: error.message)
+          end
+        elsif resource.respond_to?(:details)
+          details = resource.details
+        else
+          details = resource.messages
+        end
+
         details.each do |error_key, error_hashes|
           error_hashes.each_with_index do |error_hash, index|
             # Support for errors.add(:attr, 'message')
@@ -69,9 +81,11 @@ module JSONAPI
           end
         end
 
-        JSONAPI::ActiveModelErrorSerializer.new(
-          errors, params: { model: model, model_serializer: model_serializer }
-        ).serialized_json
+        JSONAPI::Rails.serializer_to_json(
+          JSONAPI::ActiveModelErrorSerializer.new(
+            errors, params: { model: model, model_serializer: model_serializer }
+          )
+        )
       end
     end
 
@@ -103,13 +117,15 @@ module JSONAPI
           serializer_class = JSONAPI::Rails.serializer_class(resource, many)
         end
 
-        serializer_class.new(resource, options).serialized_json
+        JSONAPI::Rails.serializer_to_json(
+          serializer_class.new(resource, options)
+        )
       end
     end
 
     # Checks if an object is a collection
     #
-    # Stolen from [FastJsonapi::ObjectSerializer], instance method.
+    # Stolen from [JSONAPI::Serializer], instance method.
     #
     # @param resource [Object] to check
     # @param force_is_collection [NilClass] flag to overwrite
@@ -128,6 +144,18 @@ module JSONAPI
       klass = resource.first.class if is_collection
 
       "#{klass.name}Serializer".constantize
+    end
+
+    # Lazily returns the serializer JSON
+    #
+    # @param serializer [Object] to evaluate
+    # @return [String]
+    def self.serializer_to_json(serializer)
+      if serializer.respond_to?(:serialized_json)
+        serializer.serialized_json
+      else
+        serializer.serializable_hash.to_json
+      end
     end
   end
 end

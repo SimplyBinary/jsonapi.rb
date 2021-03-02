@@ -16,12 +16,11 @@ Gem::Specification.new do |spec|
   spec.homepage      = 'https://github.com/stas/jsonapi.rb'
   spec.license       = 'MIT'
 
-  spec.files         = Dir.chdir(File.expand_path('..', __FILE__)) do
-    `git ls-files -z`.split("\x0").reject { |f| f.match(%r{^(spec)/}) }
-  end
+  spec.files         = Dir.glob('{lib,spec}/**/*', File::FNM_DOTMATCH)
+  spec.files        += %w(LICENSE.txt README.md)
   spec.require_paths = ['lib']
 
-  spec.add_dependency 'fast_jsonapi', '~> 1.5'
+  spec.add_dependency 'jsonapi-serializer'
   spec.add_dependency 'ransack'
   spec.add_dependency 'rack'
 
@@ -34,7 +33,7 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency 'jsonapi-rspec'
   spec.add_development_dependency 'yardstick'
   spec.add_development_dependency 'rubocop-rails_config'
-  spec.add_development_dependency 'rubocop'
+  spec.add_development_dependency 'rubocop', ENV['RUBOCOP_VERSION']
   spec.add_development_dependency 'simplecov'
   spec.add_development_dependency 'rubocop-performance'
 end
